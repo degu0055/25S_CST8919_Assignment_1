@@ -1,8 +1,20 @@
 AppServiceConsoleLogs
-| where TimeGenerated > ago(7d)
-| where ResultDescription contains "[LOGIN]"
-| extend user_id = extract(@"user_id=(\S+)", 1, ResultDescription)
-| extend email = extract(@"email=([\w\.-]+@[\w\.-]+)", 1, ResultDescription)
-| extend timestamp = extract(@"timestamp=(\S+)", 1, ResultDescription)
-| project TimeGenerated, user_id, email, timestamp
-| order by TimeGenerated desc
+| where TimeGenerated > ago(15m)
+| where ResultDescription has "event=authorized_access" and ResultDescription has "path=/protected"
+| extend user_id = extract(@"user_id=([^\s,]+)", 1, ResultDescription)
+| extend name = extract(@"name=""([^""]+)""", 1, ResultDescription)
+| extend timestamp = extract(@"timestamp=([^\s,]+)", 1, ResultDescription)
+| summarize access_count = count(), latest_timestamp = max(timestamp) by user_id, name
+| where access_count > 10
+| project user_id, name, latest_timestamp, access_count
+| order by access_count desc
+
+
+Simplified:
+AppServiceConsoleLogs
+| where TimeGenerated > ago(15m)
+| where ResultDescription has "event=authorized_access" and ResultDescription has "path=/protected"
+| extend user_id = extract(@"user_id=([^\s,]+)", 1, ResultDescription)
+| extend timestamp = extract(@"timestamp=([^\s,]+)", 1, ResultDescription)
+| summarize access_count = count(), latest_timestamp = max(timestamp) by user_id
+| where access_count > 10

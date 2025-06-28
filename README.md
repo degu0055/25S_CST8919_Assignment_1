@@ -1,195 +1,70 @@
-<!-- 
+<!-- Repo
+https://github.com/degu0055/25S_CST8919_Assignment_1
+to push git push azure main:master -->
 
-Repo link:
-https://github.com/degu0055/01-login 
--->
-# Flask Auth0 Login Example
 
-This is a simple Flask web application demonstrating how to implement user login with Auth0 using the Authlib library.
 
-## Prerequisites
+# Flask Auth0 WebApp with Azure Monitoring and Alerting
 
-- Python 3.x
-- An Auth0 account
-- Your Auth0 application configured with callback/logout URLs
+## Setup Steps
 
-## Setup Instructions
+1. **Auth0 Setup:**
+   - Create an Auth0 tenant and application.
+   - Configure allowed callback URLs to your Azure app URL `/callback`.
+   - Get `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET`, and `AUTH0_DOMAIN`.
 
-### 1. Clone the Repository
+2. **Azure Setup:**
+   - Deploy your Flask web app to Azure App Service.
+   - Create a Log Analytics workspace to collect app logs.
+   - Connect your App Service to the Log Analytics workspace for monitoring.
 
-```bash
-git clone https://github.com/your-username/flask-auth0-example.git
-cd flask-auth0-example
+3. **Environment Variables (.env):**
+   - Create a `.env` file with:
+     ```
+     APP_SECRET_KEY=your_flask_secret_key
+     AUTH0_CLIENT_ID=your_auth0_client_id
+     AUTH0_CLIENT_SECRET=your_auth0_client_secret
+     AUTH0_DOMAIN=your_auth0_domain
+     PORT=3000
+     ```
+   - These variables are loaded by the Flask app.
+
+## Logging and Detection Logic
+
+- The Flask app logs important events:
+  - User login info (`user_id`, `email`, `timestamp`).
+  - Authorized access to `/protected` endpoint with user details (`user_id`, `name`, `ip`, `timestamp`).
+  - Unauthorized access attempts.
+
+- Logs are sent to Azure App Service console logs, collected by Log Analytics.
+
+- Detection logic:
+  - We analyze logs to find users accessing `/protected` more than 10 times within 15 minutes.
+  - Extract `user_id`, `name`, and timestamps from logs.
+
+## KQL Query for Detection
+
+```kql
+AppServiceConsoleLogs
+| where TimeGenerated > ago(15m)
+| where ResultDescription has "event=authorized_access" and ResultDescription has "path=/protected"
+| extend user_id = extract(@"user_id=([^\s,]+)", 1, ResultDescription)
+| extend name = extract(@"name=\"([^\"]+)\"", 1, ResultDescription)
+| extend timestamp = extract(@"timestamp=([^\s,]+)", 1, ResultDescription)
+| summarize access_count = count(), latest_timestamp = max(timestamp) by user_id, name
+| where access_count > 10
+| project user_id, name, latest_timestamp, access_count
+| order by access_count desc
 ```
 
-### 2. Create a Virtual Environment (Optional but recommended)
+## Alert Logic
 
-```bash
-python -m venv venv
-source venv/bin/activate   # On Windows use: venv\Scripts\activate
-```
+- Created Azure Monitor Alert based on above query.
 
-### 3. Install Dependencies
+- Alert triggers if any user accesses `/protected` more than 10 times in 15 minutes.
 
-```bash
-pip install Flask Authlib python-dotenv
-```
+- Alert severity is set to **3 (Low)**.
 
-> Alternatively, you can create a `requirements.txt` file:
+- Action Group email notification was skipped as requested.
 
-```
-Flask
-Authlib
-python-dotenv
-```
-
-Then install with:
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Create Environment Variables
-
-Create a `.env` file in your project root with the following content:
-
-```
-AUTH0_CLIENT_ID=your-client-id
-AUTH0_CLIENT_SECRET=your-client-secret
-AUTH0_DOMAIN=your-auth0-domain
-APP_SECRET_KEY=your-random-secret-key
-```
-
-To generate a secure `APP_SECRET_KEY`:
-
-```bash
-openssl rand -hex 32
-```
-
-### 5. Configure Auth0
-
-In your [Auth0 dashboard](https://manage.auth0.com/), configure:
-
-- **Allowed Callback URLs:** `http://localhost:3000/callback`
-- **Allowed Logout URLs:** `http://localhost:3000`
-
-### 6. Create `server.py`
-
-```python
-import os
-from flask import Flask, redirect, render_template, session, url_for
-from authlib.integrations.flask_client import OAuth
-from dotenv import load_dotenv
-
-load_dotenv()
-
-app = Flask(__name__)
-app.secret_key = os.getenv("APP_SECRET_KEY")
-
-oauth = OAuth(app)
-
-auth0 = oauth.register(
-    'auth0',
-    client_id=os.getenv('AUTH0_CLIENT_ID'),
-    client_secret=os.getenv('AUTH0_CLIENT_SECRET'),
-    api_base_url=f"https://{os.getenv('AUTH0_DOMAIN')}",
-    access_token_url=f"https://{os.getenv('AUTH0_DOMAIN')}/oauth/token",
-    authorize_url=f"https://{os.getenv('AUTH0_DOMAIN')}/authorize",
-    client_kwargs={'scope': 'openid profile email'},
-)
-
-@app.route('/')
-def home():
-    return render_template('home.html')
-
-@app.route('/login')
-def login():
-    return auth0.authorize_redirect(redirect_uri=url_for('callback', _external=True))
-
-@app.route('/callback')
-def callback():
-    token = auth0.authorize_access_token()
-    userinfo = auth0.get('userinfo').json()
-    session['user'] = userinfo
-    return redirect('/dashboard')
-
-@app.route('/dashboard')
-def dashboard():
-    if 'user' not in session:
-        return redirect('/')
-    return render_template('dashboard.html', user=session['user'])
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(
-        f"https://{os.getenv('AUTH0_DOMAIN')}/v2/logout?returnTo={url_for('home', _external=True)}&client_id={os.getenv('AUTH0_CLIENT_ID')}"
-    )
-
-@app.route("/protected")
-def protected():
-    user = session.get("user")
-    if user is None:
-        # Save current URL to return after login (optional)
-        session["redirect_after_login"] = request.path
-        return redirect(url_for("login"))
-    return render_template("protected.html", user=user)
-
-if __name__ == '__main__':
-    app.run(debug=True, port=3000)
-```
-
-### 7. Create `templates/home.html`
-
-```html
-<!DOCTYPE html>
-<html>
-<head><title>Home</title></head>
-<body>
-  <h1>Welcome</h1>
-  <a href="{{ url_for('login') }}">Login</a>
-</body>
-</html>
-```
-
-### 8. Create `templates/dashboard.html`
-
-```html
-<!DOCTYPE html>
-<html>
-<head><title>Dashboard</title></head>
-<body>
-  <h1>Hello, {{ user.name }}</h1>
-  <p>Email: {{ user.email }}</p>
-  <a href="{{ url_for('logout') }}">Logout</a>
-</body>
-</html>
-```
-
-### 9. Create `templates/protected.html`
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Protected Page</title>
-</head>
-<body>
-    <h1>Welcome to the Protected Page</h1>
-    <p>You are logged in as {{ user['userinfo']['email'] }}</p>
-    <a href="{{ url_for('logout') }}">Logout</a>
-</body>
-</html>
-```
-
-### 10. Run the Application
-
-```bash
-python server.py
-```
-
-Visit: [http://localhost:3000](http://localhost:3000)
-
-
-# 🎥 Video Link
-[Watch on YouTube](https://drive.google.com/file/d/1ZdEWX-D8ly3vZmKJ9WoVyVmsr2rB36jU/view?usp=sharing)
+This setup helps monitor user access patterns and detect possible abuse or suspicious behavior in your Flask Auth0 app hosted on Azure.
