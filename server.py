@@ -57,11 +57,12 @@ def callback():
     session["user"] = token
 
     userinfo = token.get("userinfo", {})
-    user_id = userinfo.get("sub")
-    email = userinfo.get("email")
+    user_id = userinfo.get("sub", "unknown")
+    email = userinfo.get("email", "unknown")
     timestamp = datetime.utcnow().isoformat()
 
-    app.logger.info(f"[LOGIN] user_id={user_id}, email={email}, timestamp={timestamp}")
+    # Log login event with user info for Azure log queries
+    app.logger.info(f"[LOGIN] user_id={user_id} email={email} timestamp={timestamp}")
 
     # Flush handlers to ensure logs are output immediately
     for handler in app.logger.handlers:
@@ -80,9 +81,7 @@ def login():
 def logout():
     session.clear()
     return redirect(
-        "https://"
-        + env.get("AUTH0_DOMAIN")
-        + "/v2/logout?"
+        f"https://{env.get('AUTH0_DOMAIN')}/v2/logout?"
         + urlencode(
             {
                 "returnTo": url_for("home", _external=True),
