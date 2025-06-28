@@ -24,7 +24,7 @@ APP_SECRET_KEY=your_flask_secret_key
 AUTH0_CLIENT_ID=your_auth0_client_id
 AUTH0_CLIENT_SECRET=your_auth0_client_secret
 AUTH0_DOMAIN=your_auth0_domain
-PORT=3000
+APP_SECRET_KEY=your_secret
 ```
 
 ---
