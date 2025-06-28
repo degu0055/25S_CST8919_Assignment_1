@@ -1,0 +1,8 @@
+AppServiceConsoleLogs
+| where TimeGenerated > ago(7d)
+| where ResultDescription contains "[LOGIN]"
+| extend user_id = extract(@"user_id=(\S+)", 1, ResultDescription)
+| extend email = extract(@"email=([\w\.-]+@[\w\.-]+)", 1, ResultDescription)
+| extend timestamp = extract(@"timestamp=(\S+)", 1, ResultDescription)
+| project TimeGenerated, user_id, email, timestamp
+| order by TimeGenerated desc
