@@ -1,5 +1,5 @@
-<!-- Repo
-https://github.com/degu0055/25S_CST8919_Assignment_1
+<!-- Repo  
+https://github.com/degu0055/25S_CST8919_Assignment_1  
 to push git push azure main:master -->
 
 # Flask Auth0 Azure Monitoring Setup
@@ -60,6 +60,16 @@ AppServiceConsoleLogs
 - Azure Monitor Alert triggers when any user accesses `/protected` more than 10 times in 15 minutes.
 - Alert severity is set to 3 (Low).
 - **Note:** Action Group email notification was skipped due to restrictions on creating Action Groups.
+
+---
+
+## Demo
+
+This is the demo:  
+**https://drive.google.com/file/d/1VpM_rDh9D0fv5iK5f2TEbrNQntZdFh-m/view?usp=sharing**
+
+**Important Note:**  
+Since I cannot create an Action Group, the email notification is **not shown** in the video.
 
 ---
 
