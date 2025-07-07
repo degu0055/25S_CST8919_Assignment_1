@@ -65,8 +65,7 @@ AppServiceConsoleLogs
 
 ## Demo
 
-This is the demo:  
-**https://drive.google.com/file/d/1VpM_rDh9D0fv5iK5f2TEbrNQntZdFh-m/view?usp=sharing**
+👉 [Click here to view the demo video](https://drive.google.com/file/d/1VpM_rDh9D0fv5iK5f2TEbrNQntZdFh-m/view?usp=sharing)
 
 **Important Note:**  
 Since I cannot create an Action Group, the email notification is **not shown** in the video.
